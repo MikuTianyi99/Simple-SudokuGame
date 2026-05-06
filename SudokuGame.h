@@ -45,6 +45,7 @@ private:
     QTimer* m_timer;
     QLabel* m_timerLabel;
     int m_elapsedSeconds;
+    int m_currentDifficulty;
 
     // 游戏数据
     int m_board[9][9];      // 当前盘面 (0表示空格)
@@ -60,7 +61,7 @@ private:
     // 初始化UI
     void setupUI();
     // 初始化游戏盘面 (从预设题目中选择一个，随机或默认第一个)
-    void initGame(int presetIndex = -1);
+    void initGame();
     // 生成题目
     void generate_test();
     // 刷新整个表格显示 (根据m_board和m_fixed更新)
