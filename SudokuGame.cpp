@@ -13,10 +13,10 @@ SudokuGame::SudokuGame(QWidget *parent)
     , m_elapsedSeconds(0)
 {
     setupUI();
-    initGame(getRandomPresetIndex());
+    onNewGame();
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &SudokuGame::onTimerTick);
-    startGameTimer();
+    //startGameTimer();
 }
 
 SudokuGame::~SudokuGame()
@@ -164,17 +164,9 @@ void SudokuGame::setupUI()
     updateStatusMessage("点击新游戏以开始");
 }
 
-int SudokuGame::getRandomPresetIndex() const
-{
-    static bool seedInitialized = false;
-    if (!seedInitialized) {
-        std::srand(static_cast<unsigned>(std::time(nullptr)));
-        seedInitialized = true;
-    }
-    return std::rand() % 3;
-}
 
-void SudokuGame::initGame(int presetIndex)
+
+void SudokuGame::initGame()
 {
     generate_test();
 
@@ -401,6 +393,8 @@ void SudokuGame::onNumberButtonClicked(int number)
     if (isVictory()) {
         QMessageBox::information(this, "恭喜！", "你完成了数独！🎉 太棒了！");
         updateStatusMessage("游戏胜利！");
+        stopGameTimer();
+
     } else {
         updateStatusMessage(QString("已在格子 (%1, %2) 填入 %3").arg(m_currentRow+1).arg(m_currentCol+1).arg(number));
     }
@@ -429,12 +423,38 @@ void SudokuGame::onDeleteButtonClicked()
 
 void SudokuGame::onNewGame()
 {
-    // 随机选择新题目
-    int newPreset = getRandomPresetIndex();
-    initGame(newPreset);
+    // 弹出难度选择对话框
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("选择难度");
+    msgBox.setText("请选择游戏难度：");
+    QPushButton* easyBtn = msgBox.addButton("简单", QMessageBox::ActionRole);
+    QPushButton* mediumBtn = msgBox.addButton("普通", QMessageBox::ActionRole);
+    QPushButton* hardBtn = msgBox.addButton("困难", QMessageBox::ActionRole);
+    msgBox.setStandardButtons(QMessageBox::Cancel);
+    msgBox.setDefaultButton(mediumBtn);
+
+    msgBox.exec();
+
+    int selectedDifficulty = -1;
+    if (msgBox.clickedButton() == easyBtn)
+        selectedDifficulty = 0;
+    else if (msgBox.clickedButton() == mediumBtn)
+        selectedDifficulty = 1;
+    else if (msgBox.clickedButton() == hardBtn)
+        selectedDifficulty = 2;
+    else
+        return; // 用户取消，不开始新游戏
+
+    // 保存难度变量（供您后续使用）
+    m_currentDifficulty = selectedDifficulty;
+
+    // 加载对应难度的预设题目
+    initGame();
+
+    // 重置选中状态和计时器（计时器启动已包含在 initGame 中，若无请手动调用）
     m_currentRow = -1;
     m_currentCol = -1;
-    startGameTimer();
+    startGameTimer();   // 如果有计时器则重置并启动
 }
 
 void SudokuGame::onResetGame()
@@ -479,6 +499,7 @@ void SudokuGame::onCheckGame()
     } else {
         QMessageBox::information(this, "检查结果", "完美！所有格子正确且无冲突，你赢了！");
         updateStatusMessage("游戏胜利！🎉");
+        stopGameTimer();
     }
 }
 
@@ -632,12 +653,26 @@ void SudokuGame::generate_test(){
     applyMapping(m_presetBoards, mapping);
     shuffleRows(m_presetBoards, rng);
     shuffleCols(m_presetBoards, rng);
+    int randomNumber;
 
-    std::uniform_int_distribution<> dis(40, 55);
-    std::mt19937 gen(static_cast<unsigned>(seed));
+    if (m_currentDifficulty == 0){
+        std::uniform_int_distribution<> dis(30, 40);
+        std::mt19937 gen(static_cast<unsigned>(seed));
+        randomNumber = dis(gen);
+    }
+    if (m_currentDifficulty == 1){
+        std::uniform_int_distribution<> dis(41, 55);
+        std::mt19937 gen(static_cast<unsigned>(seed));
+        randomNumber = dis(gen);
+    }
+    if (m_currentDifficulty == 2){
+        std::uniform_int_distribution<> dis(56, 70);
+        std::mt19937 gen(static_cast<unsigned>(seed));
+        randomNumber = dis(gen);
+    }
     int line[9];
     // 生成随机数
-    int randomNumber = dis(gen);
+    //int randomNumber = dis(gen);
     //std::cout << randomNumber << " ";
     int arrange = randomNumber/9;
     int intrad = arrange*9;
@@ -653,7 +688,8 @@ void SudokuGame::generate_test(){
 
     bool used[9] = {0};
     int count;
-
+    std::uniform_int_distribution<> dis(0, 8);
+    std::mt19937 gen(static_cast<unsigned>(seed));
     for (int i = 0;i<9;i++){
         count = 0;
         for (int j = 0;j<9;j++){
