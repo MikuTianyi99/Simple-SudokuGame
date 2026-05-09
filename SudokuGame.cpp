@@ -1,4 +1,5 @@
 #include "SudokuGame.h"
+#include "SudokuDelegate.h"
 #include <QDebug>
 #include <cstdlib>
 #include <ctime>
@@ -6,6 +7,8 @@
 #include <algorithm>
 #include <random>
 #include <chrono>
+#include <QMediaPlayer>
+#include <QAudioOutput>
 SudokuGame::SudokuGame(QWidget *parent)
     : QMainWindow(parent)
     , m_currentRow(-1)
@@ -17,6 +20,19 @@ SudokuGame::SudokuGame(QWidget *parent)
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &SudokuGame::onTimerTick);
     startGameTimer();
+    m_audioOutput = new QAudioOutput(this);
+    m_music?m_audioOutput->setVolume(0.3):m_audioOutput->setVolume(0.0);
+    m_backgroundMusic = new QMediaPlayer(this);
+    m_backgroundMusic->setAudioOutput(m_audioOutput);
+    m_backgroundMusic->setSource(QUrl("qrc:/icons/background.mp3"));
+    m_backgroundMusic->setLoops(QMediaPlayer::Infinite);
+    m_writeSoundEffect = new QSoundEffect(this);
+    m_writeSoundEffect->setSource(QUrl("qrc:/icons/write.wav"));
+    m_writeSoundEffect->setVolume(0.5f);
+    m_delSoundEffect = new QSoundEffect(this);
+    m_delSoundEffect->setSource(QUrl("qrc:/icons/del.wav"));
+    m_delSoundEffect->setVolume(0.5f);
+    m_backgroundMusic->play();
 }
 
 SudokuGame::~SudokuGame()
@@ -29,6 +45,7 @@ void SudokuGame::setupUI()
     QWidget* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
 
+
     // 主布局：水平布局
     QHBoxLayout* mainLayout = new QHBoxLayout(centralWidget);
     mainLayout->setSpacing(15);
@@ -40,6 +57,8 @@ void SudokuGame::setupUI()
     m_table->setSelectionBehavior(QAbstractItemView::SelectItems);
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->setFocusPolicy(Qt::StrongFocus);
+    m_table->setItemDelegate(new SudokuDelegate(this));
+    m_table->setShowGrid(false);
 
     // 固定单元格大小，保持正方形
     int cellSize = 70;
@@ -144,9 +163,6 @@ void SudokuGame::setupUI()
     m_statusLabel->setWordWrap(true);                      // 允许换行
     m_statusLabel->setFixedHeight(60);                     // 固定高度
     rightLayout->addWidget(m_statusLabel);
-
-
-    //mainLayout->addWidget(m_statusLabel);
 
     // 连接功能按钮信号
     connect(m_newGameButton, &QPushButton::clicked, this, &SudokuGame::onNewGame);
@@ -376,6 +392,7 @@ void SudokuGame::onCellSelected(int row, int col)
 
 void SudokuGame::onNumberButtonClicked(int number)
 {
+    if (m_soundEffect) m_writeSoundEffect->play();
     if (m_currentRow == -1 || m_currentCol == -1) {
         updateStatusMessage("请先点击一个格子！");
         return;
@@ -408,6 +425,7 @@ void SudokuGame::onNumberButtonClicked(int number)
 
 void SudokuGame::onDeleteButtonClicked()
 {
+    if (m_soundEffect) m_delSoundEffect->play();
     if (m_currentRow == -1 || m_currentCol == -1) {
         updateStatusMessage("请先点击一个格子！");
         return;
@@ -444,6 +462,7 @@ void SudokuGame::onResetGame()
 
 void SudokuGame::onClearAll()
 {
+<<<<<<< Updated upstream
     // 清除所有用户填写的数字 (非预设格子置零)
     for (int i = 0; i < 9; ++i) {
         for (int j = 0; j < 9; ++j) {
@@ -451,6 +470,45 @@ void SudokuGame::onClearAll()
                 m_board[i][j] = 0;
             }
         }
+=======
+    stopGameTimer();
+    // 暂停菜单
+    QMessageBox msgBox1;
+    msgBox1.setWindowTitle("游戏菜单");
+    msgBox1.setText("游戏菜单");
+    QPushButton* cancelBtn = msgBox1.addButton("取消" ,QMessageBox::ActionRole);
+    QPushButton* musicBtn = msgBox1.addButton("开启或关闭音乐", QMessageBox::ActionRole);
+    QPushButton* soundeffectBtn = msgBox1.addButton("开启或关闭音效", QMessageBox::ActionRole);
+    QPushButton* answerBtn = msgBox1.addButton("查看答案", QMessageBox::ActionRole);
+    msgBox1.setDefaultButton(cancelBtn);
+    msgBox1.exec();
+    if (msgBox1.clickedButton() == answerBtn){
+        for (int i = 0; i < 9; ++i) {
+            for (int j = 0; j < 9; ++j) {
+                if (!m_fixed[i][j])
+                    m_board[i][j] = m_answerBoards[i][j];
+            }
+        }
+        refreshTableDisplay();
+        QTimer::singleShot(1500, this, &SudokuGame::onNewGame_NoCancel);
+    }
+    if (msgBox1.clickedButton() == musicBtn){
+        if (m_music){
+            m_music = 0;
+            m_audioOutput->setVolume(0.0);
+        }else{
+            m_music = 1;
+            m_audioOutput->setVolume(0.3);
+        }
+        resumeGameTimer();
+    }
+    if (msgBox1.clickedButton() == soundeffectBtn){
+        m_soundEffect?m_soundEffect = 0:m_soundEffect = 1;
+        resumeGameTimer();
+    }
+    if (msgBox1.clickedButton() == cancelBtn){
+        resumeGameTimer();
+>>>>>>> Stashed changes
     }
     refreshTableDisplay();
     updateStatusMessage("已清除所有用户填入的数字");
@@ -513,7 +571,13 @@ void SudokuGame::onTimerTick()
     updateTimerDisplay();
 }
 
+<<<<<<< Updated upstream
 // 以下为题目生成部分
+=======
+
+// 题目生成
+
+>>>>>>> Stashed changes
 // 题目标准模板
 const int INIT_BOARD[9][9] = {
     {9, 4, 5, 3, 2, 7, 1, 8, 6},
