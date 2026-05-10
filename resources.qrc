@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/background.mp3</file>
+        <file>icons/write.wav</file>
+        <file>icons/del.wav</file>
+        <file>icons/appicon.icns</file>
+    </qresource>
+</RCC>

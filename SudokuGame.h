@@ -12,6 +12,10 @@
 #include <QHeaderView>
 #include <QStyleFactory>
 #include <QTimer>
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QSoundEffect>
+
 
 
 class SudokuGame : public QMainWindow
@@ -27,8 +31,9 @@ private slots:
     void onNumberButtonClicked(int number);
     void onDeleteButtonClicked();
     void onNewGame();
+    void onNewGame_NoCancel();
     void onResetGame();
-    void onClearAll();
+    void onMenu();
     void onCheckGame();
     void onTimerTick();
 
@@ -44,7 +49,13 @@ private:
     QLabel* m_statusLabel;
     QTimer* m_timer;
     QLabel* m_timerLabel;
+    QMediaPlayer* m_backgroundMusic;    // 音乐播放器
+    QAudioOutput* m_audioOutput;        // 音乐输出设备
+    QSoundEffect* m_writeSoundEffect;
+    QSoundEffect* m_delSoundEffect;
+
     int m_elapsedSeconds;
+    int m_currentDifficulty = 0;
 
     // 游戏数据
     int m_board[9][9];      // 当前盘面 (0表示空格)
@@ -54,13 +65,22 @@ private:
     int m_currentRow;       // 当前选中的行
     int m_currentCol;       // 当前选中的列
 
-    // 预设题目库 (三个不同难度的题目, 0表示空格)
+    // 题目（0表示填空处）
     int m_presetBoards[9][9];
+    // 答案
+    int m_answerBoards[9][9];
+
+    // 是否播放音乐（默认为0）
+    bool m_music = 0;
+    // 是否播放音效（默认为1）
+    bool m_soundEffect = 1;
+
+
 
     // 初始化UI
     void setupUI();
     // 初始化游戏盘面 (从预设题目中选择一个，随机或默认第一个)
-    void initGame(int presetIndex = -1);
+    void initGame();
     // 生成题目
     void generate_test();
     // 刷新整个表格显示 (根据m_board和m_fixed更新)
@@ -84,6 +104,7 @@ private:
     // 计时器
     void startGameTimer();
     void stopGameTimer();
+    void resumeGameTimer();
     void updateTimerDisplay();
 };
 
