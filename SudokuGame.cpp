@@ -1,4 +1,5 @@
 #include "SudokuGame.h"
+#include "SudokuDelegate.h"
 #include <QDebug>
 #include <cstdlib>
 #include <ctime>
@@ -6,17 +7,37 @@
 #include <algorithm>
 #include <random>
 #include <chrono>
+#include <QMediaPlayer>
+#include <QAudioOutput>
 SudokuGame::SudokuGame(QWidget *parent)
     : QMainWindow(parent)
     , m_currentRow(-1)
     , m_currentCol(-1)
     , m_elapsedSeconds(0)
 {
-    setupUI();
-    initGame();
-    m_timer = new QTimer(this);
+    setupUI(); // 绘制UI界面
+    initGame(); // 游戏初始化
+
+    m_timer = new QTimer(this); // 建立计时器
     connect(m_timer, &QTimer::timeout, this, &SudokuGame::onTimerTick);
-    startGameTimer();
+
+    startGameTimer(); // 开始计时
+
+    m_audioOutput = new QAudioOutput(this);
+    // 如果直接关闭音乐会让音效播放变卡
+    m_music?m_audioOutput->setVolume(0.3):m_audioOutput->setVolume(0.0);
+    // 音乐和音效
+    m_backgroundMusic = new QMediaPlayer(this);
+    m_backgroundMusic->setAudioOutput(m_audioOutput);
+    m_backgroundMusic->setSource(QUrl("qrc:/icons/background.mp3"));
+    m_backgroundMusic->setLoops(QMediaPlayer::Infinite);
+    m_writeSoundEffect = new QSoundEffect(this);
+    m_writeSoundEffect->setSource(QUrl("qrc:/icons/write.wav"));
+    m_writeSoundEffect->setVolume(0.5f);
+    m_delSoundEffect = new QSoundEffect(this);
+    m_delSoundEffect->setSource(QUrl("qrc:/icons/del.wav"));
+    m_delSoundEffect->setVolume(0.5f);
+    m_backgroundMusic->play();
 }
 
 SudokuGame::~SudokuGame()
@@ -29,6 +50,7 @@ void SudokuGame::setupUI()
     QWidget* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
 
+
     // 主布局：水平布局
     QHBoxLayout* mainLayout = new QHBoxLayout(centralWidget);
     mainLayout->setSpacing(15);
@@ -40,6 +62,8 @@ void SudokuGame::setupUI()
     m_table->setSelectionBehavior(QAbstractItemView::SelectItems);
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->setFocusPolicy(Qt::StrongFocus);
+    m_table->setItemDelegate(new SudokuDelegate(this));
+    m_table->setShowGrid(false);
 
     // 固定单元格大小，保持正方形
     int cellSize = 70;
@@ -144,9 +168,6 @@ void SudokuGame::setupUI()
     m_statusLabel->setWordWrap(true);                      // 允许换行
     m_statusLabel->setFixedHeight(60);                     // 固定高度
     rightLayout->addWidget(m_statusLabel);
-
-
-    //mainLayout->addWidget(m_statusLabel);
 
     // 连接功能按钮信号
     connect(m_newGameButton, &QPushButton::clicked, this, &SudokuGame::onNewGame);
@@ -377,6 +398,7 @@ void SudokuGame::onCellSelected(int row, int col)
 
 void SudokuGame::onNumberButtonClicked(int number)
 {
+    if (m_soundEffect) m_writeSoundEffect->play();
     if (m_currentRow == -1 || m_currentCol == -1) {
         updateStatusMessage("请先点击一个格子！");
         return;
@@ -412,6 +434,7 @@ void SudokuGame::onNumberButtonClicked(int number)
 
 void SudokuGame::onDeleteButtonClicked()
 {
+    if (m_soundEffect) m_delSoundEffect->play();
     if (m_currentRow == -1 || m_currentCol == -1) {
         updateStatusMessage("请先点击一个格子！");
         return;
@@ -473,11 +496,9 @@ void SudokuGame::onNewGame_NoCancel()
     QMessageBox msgBox;
     msgBox.setWindowTitle("选择难度");
     msgBox.setText("请选择游戏难度：");
-    //QPushButton* cancelBtn = msgBox.addButton("取消" ,QMessageBox::ActionRole);
     QPushButton* easyBtn = msgBox.addButton("简单", QMessageBox::ActionRole);
     QPushButton* mediumBtn = msgBox.addButton("普通", QMessageBox::ActionRole);
     QPushButton* hardBtn = msgBox.addButton("困难", QMessageBox::ActionRole);
-    //msgBox.setDefaultButton(cancelBtn);
 
     msgBox.exec();
 
@@ -508,15 +529,6 @@ void SudokuGame::onResetGame()
 
 void SudokuGame::onMenu()
 {
-<<<<<<< Updated upstream
-    // 清除所有用户填写的数字 (非预设格子置零)
-    for (int i = 0; i < 9; ++i) {
-        for (int j = 0; j < 9; ++j) {
-            if (!m_fixed[i][j]) {
-                m_board[i][j] = 0;
-            }
-        }
-=======
     stopGameTimer();
     // 暂停菜单
     QMessageBox msgBox1;
@@ -554,7 +566,6 @@ void SudokuGame::onMenu()
     }
     if (msgBox1.clickedButton() == cancelBtn){
         resumeGameTimer();
->>>>>>> Stashed changes
     }
 }
 
@@ -577,7 +588,7 @@ void SudokuGame::onCheckGame()
         updateStatusMessage("存在冲突，请修改红色格子");
     } else if (hasEmpty) {
         QMessageBox::information(this, "检查结果", "盘面尚未填满，继续加油！");
-        updateStatusMessage("盘面未完成，继续努力");
+        updateStatusMessage("盘面未完成，继续努力！");
     } else {
         QMessageBox::information(this, "检查结果", "完美！所有格子正确且无冲突，你赢了！");
         updateStatusMessage("游戏胜利！🎉");
@@ -625,13 +636,9 @@ void SudokuGame::onTimerTick()
     updateTimerDisplay();
 }
 
-<<<<<<< Updated upstream
-// 以下为题目生成部分
-=======
 
 // 题目生成
 
->>>>>>> Stashed changes
 // 题目标准模板
 const int INIT_BOARD[9][9] = {
     {9, 4, 5, 3, 2, 7, 1, 8, 6},
@@ -772,7 +779,7 @@ void SudokuGame::generate_test(){
         randomNumber = dis(gen);
     }
 
-    // 将空格均分至每行
+    // 将空格均分至每行（降低出现某个九宫格全部填满的概率）
     int line[9];
     int arrange = randomNumber/9;
     int intrad = arrange*9;
